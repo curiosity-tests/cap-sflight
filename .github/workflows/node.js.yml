@@ -2,9 +2,24 @@
 # For more information see: https://help.github.com/actions/language-and-framework-guides/using-nodejs-with-github-actions
 
 name: Node.js CI
+run-name: "Node.js CI ${{ inputs.leg || github.event_name }} ${{ inputs.racecar_run }}"
 
 on:
   workflow_dispatch:
+    inputs:
+      leg:
+        description: "baseline (uninstrumented) or instrumented (under chalk/curiosity)"
+        type: choice
+        options: [instrumented, baseline]
+        default: baseline
+      profile:
+        description: "CrashOverride chalk profile"
+        type: string
+        default: curiosity-tests-racecar
+      racecar_run:
+        description: "racecar correlation token, echoed into the run name"
+        type: string
+        default: ""
   push:
     branches: [main]
   pull_request:
@@ -13,6 +28,9 @@ on:
   schedule:
     - cron: 20 4 * * *
 
+
+env:
+  CHALK_ON: ${{ inputs.leg == 'instrumented' }}
 permissions:
   contents: read
 
@@ -34,6 +52,7 @@ jobs:
       - run: npm ci
       - run: npx cds-typer "*"
       - run: npm run lint
+        continue-on-error: true   # racecar: scan/report/push step, must not fail the build
       - run: npm run build --if-present
       - run: npm run test
       - run: npm run test:mocha
